@@ -18,7 +18,7 @@ from sklearn.utils.class_weight import compute_class_weight
 import numpy as np
 from pathlib import Path
 
-def ensemble_predictions(model1, model2, loader, device):
+'''def ensemble_predictions(model1, model2, loader, device):
     """
     Funzione che fa l'ensemble tra due modelli e calcola le predizioni mediate.
     """
@@ -42,6 +42,7 @@ def ensemble_predictions(model1, model2, loader, device):
             all_preds.extend(pred.cpu().numpy())
 
     return all_preds
+    '''
 
 def load_model(model_path, device):
     """
@@ -67,6 +68,31 @@ def load_model(model_path, device):
     model.eval()
 
     return model
+
+class EnsembleModel(nn.Module):
+    def __init__(self, model1, model2):
+        super(EnsembleModel, self).__init__()
+        self.model1 = model1
+        self.model2 = model2
+
+    def forward(self, data):
+        # Calcola le predizioni di entrambi i modelli
+        out1 = self.model1(data)
+        out2 = self.model2(data)
+
+        # Media delle probabilità per l'ensamble
+        probs1 = F.softmax(out1, dim=1)
+        probs2 = F.softmax(out2, dim=1)
+        avg_probs = (probs1 + probs2) / 2
+
+        return avg_probs
+
+def save_ensemble_model(model, save_path):
+    """
+    Salva il modello ensemble in formato .pth
+    """
+    torch.save(model.state_dict(), save_path)
+    print(f"📦 Modello dell'Ensemble salvato in: {save_path}")
 
 
 # === Early Stopper ===
@@ -283,6 +309,30 @@ def predict(loader, model, device):
             all_preds.extend(pred.cpu().numpy())
     return all_preds
 
+class EnsembleModel(nn.Module):
+    def __init__(self, model1, model2):
+        super(EnsembleModel, self).__init__()
+        self.model1 = model1
+        self.model2 = model2
+
+    def forward(self, data):
+        # Calcola le predizioni di entrambi i modelli
+        out1 = self.model1(data)
+        out2 = self.model2(data)
+
+        # Media delle probabilità per l'ensamble
+        probs1 = F.softmax(out1, dim=1)
+        probs2 = F.softmax(out2, dim=1)
+        avg_probs = (probs1 + probs2) / 2
+
+        return avg_probs
+
+def save_ensemble_model(model, save_path):
+    """
+    Salva il modello ensemble in formato .pth
+    """
+    torch.save(model.state_dict(), save_path)
+    print(f"📦 Modello dell'Ensemble salvato in: {save_path}")
 
 # === Main Pipeline ===
 def main():
@@ -325,15 +375,71 @@ def main():
 
 
         # Carica i modelli pre-addestrati
-        model1_path = "/content/drive/MyDrive/DeepLearning3/checkpoints/finetuned_C_f1=0.84.pth"
-        model2_path = "/content/drive/MyDrive/DeepLearning3/checkpoints/finetuned_C_f1=0.83.pth"
+        model1_path = "/content/drive/MyDrive/DeepLearning3/checkpoints/finetuned_D_f1=0.81.pth"
+        model2_path = "/content/drive/MyDrive/DeepLearning3/checkpoints/finetuned_D_f1=0.82.pth"
         model1 = load_model(model1_path, device)
         model2 = load_model(model2_path, device)
 
-        predictions = ensemble_predictions(model1, model2, test_loader, device)
-        save_predictions(predictions, dataset_name)
-        print("🏁 Test completato.")
+            # Define model architecture before loading state_dict
+        model1 = GNN(
+            num_class=6,  # Assuming 6 classes based on your code
+            gnn_type='gin', # Assuming gin based on your code
+            num_layer=4,  # Assuming 4 layers
+            emb_dim=300,  # Assuming 300 embedding dimensions
+            drop_ratio=0.5, # Assuming 0.0 drop ratio
+            JK='sum',     # Assuming JK='sum'
+            residual=True, # Assuming residual=True
+            virtual_node=True, # Assuming virtual_node=True
+            graph_pooling='attention' # Assuming graph_pooling='attention'
+        ).to(device)
+        model2 = GNN(
+            num_class=6,  # Assuming 6 classes based on your code
+            gnn_type='gin', # Assuming gin based on your code
+            num_layer=4,  # Assuming 4 layers
+            emb_dim=300,  # Assuming 300 embedding dimensions
+            drop_ratio=0.5, # Assuming 0.0 drop ratio
+            JK='sum',     # Assuming JK='sum'
+            residual=True, # Assuming residual=True
+            virtual_node=True, # Assuming virtual_node=True
+            graph_pooling='attention' # Assuming graph_pooling='attention'
+        ).to(device)
+
+        model1.load_state_dict(torch.load(model1_path))
+        model2.load_state_dict(torch.load(model2_path))
+
+        # Set models to evaluation mode
+        model1.eval()
+        model2.eval()
+
+        # Create the ensemble model
+        ensemble_model = EnsembleModel(model1, model2).to(device)
+
+
+           # Salva il modello dell'ensamble
+        ensemble_model_path = f"checkpoints/ensemble_model_{dataset_name}_f1=0.81e82.pth"  # Puoi modificare il nome come preferisci
+        # Note: Saving the state_dict of the EnsembleModel directly might require reloading
+        # the individual models and then loading the ensemble state_dict later for inference.
+        # For simplicity, you might consider saving the state_dicts of model1 and model2
+        # separately and loading them when you need to create the ensemble model for inference.
+        # For now, let's just save the ensemble model's state dict for demonstration.
+        save_ensemble_model(ensemble_model, ensemble_model_path)
+
+
+        # Calcola le predizioni usando il modello dell'ensamble
+        all_predictions = []
+        with torch.no_grad():
+            for data in tqdm(test_loader, desc="🔍 Inference with ensemble"):
+                data = data.to(device)
+                avg_probs = ensemble_model(data) # The EnsembleModel forward now returns avg_probs
+                pred = avg_probs.argmax(dim=1).cpu().numpy()
+                all_predictions.extend(pred)
+
+
+        save_predictions(all_predictions, dataset_name)
+        print("🏁 Test completato e modello dell'ensamble salvato.")
         return  # esci se test
+
+
 
     if args.start_pretrain:
         all_train_graphs = []
@@ -398,8 +504,8 @@ def main():
         print("✅ Pretraining completato.")
 
 
-    if args.train_path is not None:  
-        
+    if args.train_path is not None:
+
         for name in full_dataset:
             dataset_name = Path(args.train_path).parts[-2]
             if name == dataset_name:
@@ -500,30 +606,88 @@ def main():
 
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
-    best_checkpoint = f'checkpoints/model_{dataset_name}_best.pth'
-    print(f"✅ Trovato miglior checkpoint: {best_checkpoint}")
 
-    checkpoint_path = best_checkpoint
+################################################################
+    if dataset_name == 'C' or dataset_name == 'D':
+         # Carica i modelli pre-addestrati
+        model1_path = f"checkpoints/model_{dataset_name}_ensemble1.pth"
+        model2_path = f"checkpoints/model_{dataset_name}_ensemble2.pth"
+        model1 = load_model(model1_path, device)
+        model2 = load_model(model2_path, device)
 
-    model = GNN(
-        num_class=6,
-        gnn_type='gin',
-        num_layer=4,
-        emb_dim=args.emb_dim,
-        drop_ratio=args.drop_ratio,
-        JK='sum',
-        residual=True,
-        virtual_node=True,
-        graph_pooling='attention'
-    ).to(device)
+            # Define model architecture before loading state_dict
+        model1 = GNN(
+            num_class=6,  # Assuming 6 classes based on your code
+            gnn_type='gin', # Assuming gin based on your code
+            num_layer=4,  # Assuming 4 layers
+            emb_dim=300,  # Assuming 300 embedding dimensions
+            drop_ratio=0.5, # Assuming 0.0 drop ratio
+            JK='sum',     # Assuming JK='sum'
+            residual=True, # Assuming residual=True
+            virtual_node=True, # Assuming virtual_node=True
+            graph_pooling='attention' # Assuming graph_pooling='attention'
+        ).to(device)
+        model2 = GNN(
+            num_class=6,  # Assuming 6 classes based on your code
+            gnn_type='gin', # Assuming gin based on your code
+            num_layer=4,  # Assuming 4 layers
+            emb_dim=300,  # Assuming 300 embedding dimensions
+            drop_ratio=0.5, # Assuming 0.0 drop ratio
+            JK='sum',     # Assuming JK='sum'
+            residual=True, # Assuming residual=True
+            virtual_node=True, # Assuming virtual_node=True
+            graph_pooling='attention' # Assuming graph_pooling='attention'
+        ).to(device)
 
-    model.load_state_dict(torch.load(checkpoint_path))
-    print(f"📦 Modello caricato da: {checkpoint_path}")
+        model1.load_state_dict(torch.load(model1_path))
+        model2.load_state_dict(torch.load(model2_path))
 
-    predictions = predict(test_loader, model, device)
-    save_predictions(predictions, dataset_name)
-    print("🏁 Test completato.")
-    return  # esci se test
+        # Set models to evaluation mode
+        model1.eval()
+        model2.eval()
+
+        # Create the ensemble model
+        ensemble_model = EnsembleModel(model1, model2).to(device)
+
+        # Calcola le predizioni usando il modello dell'ensamble
+        all_predictions = []
+        with torch.no_grad():
+            for data in tqdm(test_loader, desc="🔍 Inference with ensemble"):
+                data = data.to(device)
+                avg_probs = ensemble_model(data) # The EnsembleModel forward now returns avg_probs
+                pred = avg_probs.argmax(dim=1).cpu().numpy()
+                all_predictions.extend(pred)
+
+
+        save_predictions(all_predictions, dataset_name)
+        print("🏁 Test completato.")
+        return  # esci se test
+
+
+    else:
+      best_checkpoint = f'checkpoints/model_{dataset_name}_best.pth'
+      print(f"✅ Trovato miglior checkpoint: {best_checkpoint}")
+      checkpoint_path = best_checkpoint
+      
+      model = GNN(
+          num_class=6,
+          gnn_type='gin',
+          num_layer=4,
+          emb_dim=args.emb_dim,
+          drop_ratio=args.drop_ratio,
+          JK='sum',
+          residual=True,
+          virtual_node=True,
+          graph_pooling='attention'
+      ).to(device)
+
+      model.load_state_dict(torch.load(checkpoint_path))
+      print(f"📦 Modello caricato da: {checkpoint_path}")
+
+      predictions = predict(test_loader, model, device)
+      save_predictions(predictions, dataset_name)
+      print("🏁 Test completato.")
+      return  # esci se test
 
 if __name__ == "__main__":
     main()
