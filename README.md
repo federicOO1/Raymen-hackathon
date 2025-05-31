@@ -34,16 +34,13 @@ For datasets **C** and **D**, an **ensemble approach** was applied. Two differen
 ### 1. **General Flags:**
 
 - `--use_saved`:  
-  If set, it will use a previously saved dataset without reprocessing or reloading data.
+  If set, it will use a previously saved dataset without reprocessing or reloading data. If used, it requires the use of `--saved_dataset_dir` flag.
   
-- `--use_pretrained`:  
-  Indicates that a pre-trained model should be used for fine-tuning, allowing the model to start from an already trained checkpoint instead of training from scratch.
+- `--start_pretrain`:  
+  If set, it will restarts the pre-train process of the whole dataset.
 
 - `--ensamble_test`:  
   Enables ensemble testing where multiple models are used to generate predictions. This can improve performance by averaging predictions from different models.
-
-- `--only_test`:  
-  When set, the model will skip training and only generate predictions using a pre-trained model.
 
 ### 2. **Directories and Dataset Parameters:**
 
