@@ -1,5 +1,11 @@
 # Deep Learning Project | Raymen
 
+**Dataset Source**  
+The datasets used in this project are available at:  
+[https://ogb.stanford.edu/docs/ppa/](https://ogb.stanford.edu/docs/ppa/)
+
+---
+
 ## Description
 This project aims to achieve a high F1 score in graph classification with noisy labels. The model created has been trained on 4 separate datasets, involving a series of steps including pre-training, fine-tuning, and the use of an ensemble of models. The final model was used to generate predictions on test data, producing a CSV file with predictions for each dataset.
 
