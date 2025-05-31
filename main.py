@@ -417,11 +417,6 @@ def main():
 
            # Salva il modello dell'ensamble
         ensemble_model_path = f"checkpoints/ensemble_model_{dataset_name}_f1=0.81e82.pth"  # Puoi modificare il nome come preferisci
-        # Note: Saving the state_dict of the EnsembleModel directly might require reloading
-        # the individual models and then loading the ensemble state_dict later for inference.
-        # For simplicity, you might consider saving the state_dicts of model1 and model2
-        # separately and loading them when you need to create the ensemble model for inference.
-        # For now, let's just save the ensemble model's state dict for demonstration.
         save_ensemble_model(ensemble_model, ensemble_model_path)
 
 
